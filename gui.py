@@ -5,7 +5,15 @@ import picamera
 import time
 import RPi.GPIO as GPIO
 from time import sleep
+import VL53L0X
 
+tof = VL53L0X.VL53L0X()
+tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+
+timing = tof.get_timing()
+if (timing < 20000):
+    timing = 20000
+    
 camera = picamera.PiCamera()
 top = tk.Tk()
 pwmPin1 = 13
@@ -34,6 +42,15 @@ def fire():
     sleep(0.5)
     GPIO.output(solenoid, False)
     print("Firing")
+    
+    for count in range(1,101):
+        distance = tof.get_distance()
+        if (distance > 0):
+            print ("%d mm, %d cm, %d" % (distance, (distance/10), count))
+
+        time.sleep(timing/1000000.00)
+
+    tof.stop_ranging()
 
 def start_camera():
     camera.preview_fullscreen=False
