@@ -22,6 +22,7 @@ GPIO.setup(solenoid, GPIO.OUT)
 #pwmV.start(0)
 pi = pigpio.pi()
 
+
 if not pi.connected:
     exit()
     
@@ -35,7 +36,7 @@ def set_angle(angle, pwmPin):
     
 def fire():
     GPIO.output(solenoid, True)
-    sleep(0.5)
+    sleep(0.15)
     GPIO.output(solenoid, False)
     print("Firing")
 #     tof = VL53L0X.VL53L0X()
@@ -93,7 +94,7 @@ def setup_gui():
     tk.Button(buttonframe, text="Exit", command=exit).grid(row=2, column=3)
 
     tk.Scale(buttonframe, from_=-60, to=60, orient=tk.HORIZONTAL, label = "Horizontal", command=horizontal_control, length=150).grid(row=1, column=1, columnspan=3)
-    tk.Scale(buttonframe, from_=120, to=0, orient=tk.VERTICAL, label = "Vertical", command=vertical_control, length=150).grid(row=1, column=4, rowspan=2)
+    tk.Scale(buttonframe, from_=145, to=-45, orient=tk.VERTICAL, label = "Vertical", command=vertical_control, length=150).grid(row=1, column=4, rowspan=2)
     tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", command=zoom, length=150).grid(row=1,column=5, rowspan=2)
 
     buttonframe.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
