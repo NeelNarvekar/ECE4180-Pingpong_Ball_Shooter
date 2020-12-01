@@ -2,6 +2,7 @@
 
 import tkinter as tk
 import time
+import picamera
 from time import sleep
     
 camera = picamera.PiCamera()
@@ -15,23 +16,29 @@ camera.start_preview()
 def zoom1(var):
     x = (100 - float(var))/100
     print(x)
-    camera.zoom = (x,0,0,0) # (x, y, width, height)
+    camera.zoom = (x,camera.zoom[1],camera.zoom[2],camera.zoom[3]) # (x, y, width, height)
 
 def zoom2(var):
     x = (100 - float(var))/100
     print(x)
-    camera.zoom = (0,x,0,0) # (x, y, width, height)
+    camera.zoom = (camera.zoom[0],x,camera.zoom[2],camera.zoom[3]) # (x, y, width, height)
 
 def zoom3(var):
     x = (100 - float(var))/100
     print(x)
-    camera.zoom = (0,0,x,0) # (x, y, width, height)
+    camera.zoom = (camera.zoom[0],camera.zoom[1],x,camera.zoom[3]) # (x, y, width, height)
 
 def zoom4(var):
     x = (100 - float(var))/100
     print(x)
-    camera.zoom = (0,0,0,x) # (x, y, width, height)
+    camera.zoom = (camera.zoom[0],camera.zoom[1],camera.zoom[2],x) # (x, y, width, height)
 
+def exit():
+    top.destroy
+    camera.stop_preview()
+    camera.close()
+    quit()
+    
 
 # GUI SETUP CODE #
 top.resizable(width=False, height=False)
@@ -44,6 +51,8 @@ tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", comman
 tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", command=zoom2, length=150).grid(row=1,column=2)
 tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", command=zoom3, length=150).grid(row=1,column=3)
 tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", command=zoom4, length=150).grid(row=1,column=4)
+
+tk.Button(buttonframe, text="Exit", command=exit).grid(row=1, column=5)
 
 
 buttonframe.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
