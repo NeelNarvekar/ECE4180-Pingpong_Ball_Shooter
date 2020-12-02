@@ -3,6 +3,7 @@
 import tkinter as tk
 import picamera
 import time
+import math
 import RPi.GPIO as GPIO
 import pigpio
 import threading
@@ -23,7 +24,7 @@ GPIO.setup(solenoid, GPIO.OUT)
 #pwmV.start(0)
 pi = pigpio.pi()
 
-tofMutex = Lock()
+tofMutex = threading.Lock()
 tof = VL53L0X.VL53L0X()
 tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
@@ -110,7 +111,7 @@ def aim():
     tofMutex.acquire()
     d3 = tof.get_distance()
     tofMutex.release()
-    dist = (d1 + d2 + d3)/3
+    dist = (d1 + d2 + d3)/30
     print("Distance: " + str(dist) + " cm")
     # Map the distance to the proper angle
     distLo = aim_mapping[0][DIST]
@@ -130,7 +131,7 @@ def aim():
     # Interpolate the angle between them
     angle = angleHi - angleLo
     angle = angle * (dist - distLo) / (distHi - distLo)
-    angle = angle + angleLo
+    angle = math.ceil(angle + angleLo)
     print("Angle: " + str(angle))
     # Set the vertical position to the new angle
     vertical_control(angle)
