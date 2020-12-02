@@ -23,6 +23,7 @@ GPIO.setup(solenoid, GPIO.OUT)
 #pwmV.start(0)
 pi = pigpio.pi()
 
+tofMutex = Lock()
 tof = VL53L0X.VL53L0X()
 tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
@@ -98,11 +99,17 @@ def aim():
     vertical_control(10)
     sleep(1) # wait for the servo to rotate down
     # Get multiple distance measurements
+    tofMutex.acquire()
     d1 = tof.get_distance()
+    tofMutex.release()
     sleep(0.3)
+    tofMutex.acquire()
     d2 = tof.get_distance()
+    tofMutex.release()
     sleep(0.3)
+    tofMutex.acquire()
     d3 = tof.get_distance()
+    tofMutex.release()
     dist = (d1 + d2 + d3)/3
     print("Distance: " + str(dist) + " cm")
     # Map the distance to the proper angle
@@ -161,7 +168,9 @@ buttonframe.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
 def update_distance(name):
     while(1):
+        tofMutex.acquire()
         distance = tof.get_distance()
+        tofMutex.release()
         if (distance > 0):
             text.set("Distance: " + str(distance/10) + "cm")
         time.sleep(1)
