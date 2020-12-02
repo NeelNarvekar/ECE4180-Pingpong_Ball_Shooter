@@ -96,8 +96,15 @@ def aim():
     print("aiming")
     # Lower the vertical servo to aim the lidar sensor, get distance, and calculate angle
     vertical_control(10)
-    sleep(0.8) # wait for the servo to rotate down
-    dist = tof.get_distance()
+    sleep(1) # wait for the servo to rotate down
+    # Get multiple distance measurements
+    d1 = tof.get_distance()
+    sleep(0.3)
+    d2 = tof.get_distance()
+    sleep(0.3)
+    d3 = tof.get_distance()
+    dist = (d1 + d2 + d3)/3
+    print("Distance: " + str(dist) + " cm")
     # Map the distance to the proper angle
     distLo = aim_mapping[0][DIST]
     distHi = aim_mapping[1][DIST] 
@@ -111,10 +118,13 @@ def aim():
         distHi = aim_mapping[idxLo+1][DIST]
     angleLo = aim_mapping[idxLo][ANGLE]
     angleHi = aim_mapping[idxLo+1][ANGLE]
+    print("distLo = " + str(distLo) + ", distHi = " + str(distHi))
+    print("angleLo = " + str(angleLo) + ", angleHi = " + str(angleHi))
     # Interpolate the angle between them
     angle = angleHi - angleLo
     angle = angle * (dist - distLo) / (distHi - distLo)
     angle = angle + angleLo
+    print("Angle: " + str(angle))
     # Set the vertical position to the new angle
     vertical_control(angle)
 
