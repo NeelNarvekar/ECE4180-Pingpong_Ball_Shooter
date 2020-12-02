@@ -32,17 +32,17 @@ if not pi.connected:
 # Mapping between distance measured and vertical angle
 # Column 0 = Distance, Column 1 = Mapping
 #              cm  degrees
-aim_mapping = [0,    143,
-               6.3,  140,
-               18,   135,
-               21.2, 130,
-               34.4, 125,
-               44,   120,
-               54,   110,
-               60,   100,
-               65,    90,
-               70,    80,
-               1000,  75]
+aim_mapping = [[0,    143],
+               [6.3,  140],
+               [18,   135],
+               [21.2, 130],
+               [34.4, 125],
+               [44,   120],
+               [54,   110],
+               [60,   100],
+               [65,    90],
+               [70,    80],
+               [1000,  75]]
 DIST = 0
 ANGLE = 1
 
