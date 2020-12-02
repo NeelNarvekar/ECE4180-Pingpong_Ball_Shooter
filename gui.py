@@ -33,6 +33,24 @@ pwm2=GPIO.PWM(pwmPin2, 50)
 pwm1.start(0)
 pwm2.start(0)
 
+# Mapping between distance measured and vertical angle
+# Column 0 = Distance, Column 1 = Mapping
+#              cm  degrees
+aim_mapping = [0,    143,
+               6.3,  140,
+               18,   135,
+               21.2, 130,
+               34.4, 125,
+               44,   120,
+               54,   110,
+               60,   100,
+               65,    90,
+               70,    80,
+               1000,  75]
+DIST = 0
+ANGLE = 1
+
+
 def set_angle(angle, pwmPin, pwm):
     print("setting angle")
     duty = angle / 18 + 3
@@ -72,10 +90,34 @@ def horizontal_control(var):
 
 def vertical_control(var):
     set_angle(int(var), pwmPin2, pwm2)
-    print(int(var))
+    #print(int(var))
 
 def aim():
     print("aiming")
+    # Lower the vertical servo to aim the lidar sensor, get distance, and calculate angle
+    vertical_control(0)
+    sleep(0.8) # wait for the servo to rotate down
+    dist = tof.get_distance()
+    # Map the distance to the proper angle
+    distLo = aim_mapping[0][DIST]
+    distHi = aim_mapping[1][DIST] 
+    angleLo = aim_mapping[0][ANGLE]
+    angleHi = aim_mapping[1][ANGLE]
+    # Find the two distances points around this distance
+    idxLo = 0
+    while (dist > distHi):
+        idxLo += 1
+        distLo = aim_mapping[idxLo][DIST]
+        distHi = aim_mapping[idxLo+1][DIST]
+    angleLo = aim_mapping[idxLo][ANGLE]
+    angleHi = aim_mapping[idxLo+1][ANGLE]
+    # Interpolate the angle between them
+    angle = angleHi - angleLo
+    angle = angle * (dist - distLo) / (distHi - distLo)
+    angle = angle + angleLo
+    # Set the vertical position to the new angle
+    vertical_control(angle)
+        
 
 def exit():
     top.destroy
