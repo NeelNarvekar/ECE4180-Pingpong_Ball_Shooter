@@ -95,7 +95,7 @@ def vertical_control(var):
 def aim():
     print("aiming")
     # Lower the vertical servo to aim the lidar sensor, get distance, and calculate angle
-    vertical_control(0)
+    vertical_control(10)
     sleep(0.8) # wait for the servo to rotate down
     dist = tof.get_distance()
     # Map the distance to the proper angle
