@@ -1,38 +1,32 @@
-#!/usr/bin/python
-
-#text window to show distance on time of flight sensor in cm
-# or button to update distance
-# 4 sliders to test how zoom works
-
 import tkinter as tk
 import picamera
 import time
+import math
 import RPi.GPIO as GPIO
+import pigpio
+import threading
 from time import sleep
 import VL53L0X
-import threading
+    
+# Initialize variables
+camera = picamera.PiCamera()
+top = tk.Tk()
+pwmPinV = 12
+pwmPinH = 19
+solenoid = 15
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(solenoid, GPIO.OUT)
+pi = pigpio.pi()
 
+# LIDAR TOF sensor
+tofMutex = threading.Lock()
 tof = VL53L0X.VL53L0X()
 tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
-timing = tof.get_timing()
-if (timing < 20000):
-   timing = 20000
+if not pi.connected:
+    print("Error: Pi Not connected")
+    exit()
     
-camera = picamera.PiCamera()
-top = tk.Tk()
-pwmPin1 = 13
-pwmPin2 = 11
-solenoid = 15
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(pwmPin1, GPIO.OUT)
-GPIO.setup(pwmPin2, GPIO.OUT)
-GPIO.setup(solenoid, GPIO.OUT)
-pwm1=GPIO.PWM(pwmPin1, 50)
-pwm2=GPIO.PWM(pwmPin2, 50)
-pwm1.start(0)
-pwm2.start(0)
-
 # Mapping between distance measured and vertical angle
 # Column 0 = Distance, Column 1 = Mapping
 #              cm  degrees
@@ -47,57 +41,64 @@ aim_mapping = [[0,    143],
                [65,    90],
                [70,    80],
                [1000,  75]]
+# Column indices
 DIST = 0
 ANGLE = 1
 
+# Control horizontal and vertical servos
+def set_angle(angle, pwmPin):
+    pi.set_servo_pulsewidth(pwmPin, 1000 + ((angle/180) * 1000)) 
+    sleep(0.1)
 
-def set_angle(angle, pwmPin, pwm):
-    print("setting angle")
-    duty = angle / 18 + 3
-    GPIO.output(pwmPin, True)
-    pwm.ChangeDutyCycle(duty)
-#     sleep(1)
-    GPIO.output(pwmPin, False)
-    pwm.ChangeDutyCycle(duty)
-    
+# Sets GPIO outputs to power the solenoid
 def fire():
     GPIO.output(solenoid, True)
-    sleep(0.5)
+    sleep(0.15)
     GPIO.output(solenoid, False)
     print("Firing")
-    
-    for count in range(1,101):
-        distance = tof.get_distance()
-        if (distance > 0):
-            print ("%d mm, %d cm, %d" % (distance, (distance/10), count))
 
-        time.sleep(timing/1000000.00)
-
-    tof.stop_ranging()
-
+# Opens the camera preview on the screen
+#   Note: for VNC users to see the feed, the setting "Enable Direct Capture Mode" must be on
 def start_camera():
     camera.preview_fullscreen=False
-    camera.preview_window=(90,100, 320, 240)
-    camera.resolution=(640,480)
+    camera.preview_window=(90,100, 1280, 720)
+    camera.resolution=(1280,720)
     camera.start_preview()
 
+# Callback function for the zoom scroll bar
 def zoom(var):
-    x = (109 - float(var))/100
-    camera.zoom = (0.5,0.5,x,x)
+    x = (100 - float(var))/100
+    print(x)
+    camera.zoom = (0,0,x,x) # (x, y, width, height)
 
+# Set the angle of the horizontal servo
 def horizontal_control(var):
-    set_angle(int(var), pwmPin1, pwm1)
+    set_angle(int(var) + 105, pwmPinH)
 
+# Set the angle of the vertical servo
 def vertical_control(var):
-    set_angle(int(var), pwmPin2, pwm2)
-    #print(int(var))
+    set_angle(int(var) + 90, pwmPinV)
 
+# Measures distance to the target cup and sets the vertical servo angle appropriately
 def aim():
     print("aiming")
     # Lower the vertical servo to aim the lidar sensor, get distance, and calculate angle
     vertical_control(10)
-    sleep(0.8) # wait for the servo to rotate down
-    dist = tof.get_distance()
+    sleep(1) # wait for the servo to rotate down
+    # Get multiple distance measurements
+    tofMutex.acquire()
+    d1 = tof.get_distance()
+    tofMutex.release()
+    sleep(0.3)
+    tofMutex.acquire()
+    d2 = tof.get_distance()
+    tofMutex.release()
+    sleep(0.3)
+    tofMutex.acquire()
+    d3 = tof.get_distance()
+    tofMutex.release()
+    dist = (d1 + d2 + d3)/30
+    print("Distance: " + str(dist) + " cm")
     # Map the distance to the proper angle
     distLo = aim_mapping[0][DIST]
     distHi = aim_mapping[1][DIST] 
@@ -111,25 +112,29 @@ def aim():
         distHi = aim_mapping[idxLo+1][DIST]
     angleLo = aim_mapping[idxLo][ANGLE]
     angleHi = aim_mapping[idxLo+1][ANGLE]
+    print("distLo = " + str(distLo) + ", distHi = " + str(distHi))
+    print("angleLo = " + str(angleLo) + ", angleHi = " + str(angleHi))
     # Interpolate the angle between them
     angle = angleHi - angleLo
     angle = angle * (dist - distLo) / (distHi - distLo)
-    angle = angle + angleLo
+    angle = math.ceil(angle + angleLo)
+    print("Angle: " + str(angle))
     # Set the vertical position to the new angle
     vertical_control(angle)
-        
 
+# Closes relevant processes
 def exit():
     top.destroy
     camera.stop_preview()
     camera.close()
-    pwm.stop()
+    pi.set_servo_pulsewidth(pwmPinV, 0)
+    pi.set_servo_pulsewidth(pwmPinH, 0)
     GPIO.cleanup()
     quit()
 
-# GUI SETUP CODE #
+# GUI SETUP CODE 
 top.resizable(width=False, height=False)
-top.geometry("600x200")
+top.geometry("600x300")
 
 buttonframe = tk.Frame(top, width=500, height=500)
 buttonframe.grid(row=3, column=6, sticky="nesw")
@@ -143,35 +148,21 @@ tk.Button(buttonframe, text = "Aim", command=aim).grid(row=3, column=2)
 tk.Button(buttonframe, text="Fire!", command=fire).grid(row=3, column=3)
 tk.Button(buttonframe, text="Exit", command=exit).grid(row=3, column=4)
 
-tk.Scale(buttonframe, from_=0, to=180, orient=tk.HORIZONTAL, label = "Horizontal", command=horizontal_control, length=150).grid(row=2, column=1, columnspan=4)
-tk.Scale(buttonframe, from_=180, to=0, orient=tk.VERTICAL, label = "Vertical", command=vertical_control, length=150).grid(row=1, column=5, rowspan=3)
-tk.Scale(buttonframe, from_=99, to=10, orient=tk.VERTICAL, label = "Zoom", command=zoom, length=150).grid(row=1,column=6, rowspan=3)
+tk.Scale(buttonframe, from_=-60, to=60, orient=tk.HORIZONTAL, label = "Horizontal", command=horizontal_control, length=200).grid(row=2, column=1, columnspan=4)
+tk.Scale(buttonframe, from_=145, to=-45, orient=tk.VERTICAL, label = "Vertical", command=vertical_control, length=280).grid(row=1, column=5, rowspan=3)
+tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", command=zoom, length=280).grid(row=1,column=6, rowspan=3)
 
 buttonframe.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
+# Updates the GUI text every second to display the LIDAR's distance measurement
 def update_distance(name):
     while(1):
+        tofMutex.acquire()
         distance = tof.get_distance()
+        tofMutex.release()
         if (distance > 0):
             text.set("Distance: " + str(distance/10) + "cm")
         time.sleep(1)
-
-def findHorizontalDistance(v, theta, dy):
-    vx = v*cos(theta)
-    vy = v*sin(theta)
-    t = (vy + sqrt(vy*vy+19.6*dy))/9.8
-    xf = vx * t
-    return xf
-
-def sweepAndFindOptimalAngle(v, dx, dy):
-    bestAngle = 0
-    bestDist = abs(findHorizontalDistance(v, bestAngle, dy) - dx)
-    for curAngle in range(61):
-        curDist = abs(findHorizontalDistance(v, curAngle, dy) - dx)
-        if (curDist < bestDist):
-            bestAngle = curAngle
-            bestDist = curDist
-    return bestAngle
 
 def main():
     x = threading.Thread(target=update_distance, args=(1,))
