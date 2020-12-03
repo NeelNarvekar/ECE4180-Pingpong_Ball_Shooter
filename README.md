@@ -9,3 +9,6 @@ By:
 Neel Narvekar
 Connor Truono
 Tony Wineman
+
+For detailed documentation, see the Wiki page at:
+https://github.com/NeelNarvekar/ECE4180-Pingpong_Ball_Shooter/wiki/ECE4180-Pingpong_Ball_Shooter

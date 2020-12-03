@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import tkinter as tk
 import picamera
 import time
@@ -10,25 +8,23 @@ import threading
 from time import sleep
 import VL53L0X
     
+# Initialize variables
 camera = picamera.PiCamera()
 top = tk.Tk()
 pwmPinV = 12
 pwmPinH = 19
 solenoid = 15
 GPIO.setmode(GPIO.BOARD)
-#GPIO.setup(pwmPin1, GPIO.OUT)
-#GPIO.setup(pwmPin2, GPIO.OUT)
 GPIO.setup(solenoid, GPIO.OUT)
-#pwmH=GPIO.PWM(pwmPin1, 50)
-#pwmV=GPIO.PWM(pwmPin2, 50)
-#pwmV.start(0)
 pi = pigpio.pi()
 
+# LIDAR TOF sensor
 tofMutex = threading.Lock()
 tof = VL53L0X.VL53L0X()
 tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 if not pi.connected:
+    print("Error: Pi Not connected")
     exit()
     
 # Mapping between distance measured and vertical angle
@@ -45,55 +41,45 @@ aim_mapping = [[0,    143],
                [65,    90],
                [70,    80],
                [1000,  75]]
+# Column indices
 DIST = 0
 ANGLE = 1
 
-
+# Control horizontal and vertical servos
 def set_angle(angle, pwmPin):
-    #print("setting angle")
     pi.set_servo_pulsewidth(pwmPin, 1000 + ((angle/180) * 1000)) 
     sleep(0.1)
 
-    
+# Sets GPIO outputs to power the solenoid
 def fire():
     GPIO.output(solenoid, True)
     sleep(0.15)
     GPIO.output(solenoid, False)
     print("Firing")
-#     tof = VL53L0X.VL53L0X()
-#     tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
-#     
-#     timing = tof.get_timing()
-#     if (timing < 20000):
-#         timing = 20000
-#     
-#     for count in range(1,101):
-#         distance = tof.get_distance()
-#         if (distance > 0):
-#             print ("%d mm, %d cm, %d" % (distance, (distance/10), count))
-# 
-#         time.sleep(timing/1000000.00)
-# 
-#     tof.stop_ranging()
 
+# Opens the camera preview on the screen
+#   Note: for VNC users to see the feed, the setting "Enable Direct Capture Mode" must be on
 def start_camera():
     camera.preview_fullscreen=False
     camera.preview_window=(90,100, 1280, 720)
     camera.resolution=(1280,720)
     camera.start_preview()
 
+# Callback function for the zoom scroll bar
 def zoom(var):
     x = (100 - float(var))/100
     print(x)
     camera.zoom = (0,0,x,x) # (x, y, width, height)
 
+# Set the angle of the horizontal servo
 def horizontal_control(var):
     set_angle(int(var) + 105, pwmPinH)
 
+# Set the angle of the vertical servo
 def vertical_control(var):
     set_angle(int(var) + 90, pwmPinV)
-    print(int(var))
 
+# Measures distance to the target cup and sets the vertical servo angle appropriately
 def aim():
     print("aiming")
     # Lower the vertical servo to aim the lidar sensor, get distance, and calculate angle
@@ -136,6 +122,7 @@ def aim():
     # Set the vertical position to the new angle
     vertical_control(angle)
 
+# Closes relevant processes
 def exit():
     top.destroy
     camera.stop_preview()
@@ -145,7 +132,7 @@ def exit():
     GPIO.cleanup()
     quit()
 
-# GUI SETUP CODE #
+# GUI SETUP CODE 
 top.resizable(width=False, height=False)
 top.geometry("600x300")
 
@@ -167,6 +154,7 @@ tk.Scale(buttonframe, from_=99, to=0, orient=tk.VERTICAL, label = "Zoom", comman
 
 buttonframe.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
+# Updates the GUI text every second to display the LIDAR's distance measurement
 def update_distance(name):
     while(1):
         tofMutex.acquire()
