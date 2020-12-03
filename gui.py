@@ -6,7 +6,8 @@ import RPi.GPIO as GPIO
 import pigpio
 import threading
 from time import sleep
-import VL53L0X
+from VL53L0X_rasp_python.python import VL53L0X
+#import VL53L0X
     
 # Initialize variables
 camera = picamera.PiCamera()
