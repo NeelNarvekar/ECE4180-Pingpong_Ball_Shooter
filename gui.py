@@ -1,3 +1,13 @@
+# IMPORTANT NOTE:
+# This file does not work! 
+# The imports from the VL53L0X library do not work properly 
+#  unless they are run in the proper directory
+# Use VL53L0X_rasp_python/python/gui.py instead
+print("IMPORTANT NOTE: This file does not work!\n" +
+     "The imports from the VL53L0X library do not work properly " + 
+     "unless they are run in the proper directory.\n" + 
+      "Use VL53L0X_rasp_python/python/gui.py instead!")
+
 import tkinter as tk
 import picamera
 import time
@@ -8,7 +18,8 @@ import threading
 from time import sleep
 from VL53L0X_rasp_python.python import VL53L0X
 #import VL53L0X
-    
+  
+
 # Initialize variables
 camera = picamera.PiCamera()
 top = tk.Tk()
